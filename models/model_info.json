@@ -1,0 +1,14 @@
+{
+  "train_years": "2000-2021",
+  "test_years": "2022-2024",
+  "train_size": 63594,
+  "test_size": 8691,
+  "n_features": 53,
+  "final_accuracy": 0.7775,
+  "final_auc": 0.8617,
+  "final_logloss": 0.4634,
+  "dropped_features": [
+    "fatigue cols \u2014 same tourney_date leakage",
+    "h2h capped at min 3 meetings"
+  ]
+}
