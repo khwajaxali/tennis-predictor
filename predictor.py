@@ -403,61 +403,45 @@ class TennisPredictor:
 
     
     def predict_match(self, player_a_name, player_b_name, surface,
-              tournament_level='A', round_num='F'):
-    
-        # Build features with A as "winner" (P1)
-        X_a_as_p1, error_a = self.build_feature_vector(
-            player_a_name, player_b_name, surface,
-            tournament_level, round_num
-        )
+                  tournament_level='A', round_num='F'):
         
-        # Build features with B as "winner" (P1)
-        X_b_as_p1, error_b = self.build_feature_vector(
-            player_b_name, player_a_name, surface,
-            tournament_level, round_num
-        )
-        
-        if X_a_as_p1 is None or X_b_as_p1 is None:
-            return {'error': error_a or error_b}
-        
-        # Get predictions from both models in both directions
-        # Direction 1: A as P1 → P(A wins)
-        xgb_proba_a = self.xgb_model.predict_proba(X_a_as_p1)[0, 1]
-        lgb_proba_a = self.lgb_model.predict_proba(X_a_as_p1)[0, 1]
-        
-        # Direction 2: B as P1 → P(B wins), so P(A wins) = 1 - P(B wins)
-        xgb_proba_b = self.xgb_model.predict_proba(X_b_as_p1)[0, 1]
-        lgb_proba_b = self.lgb_model.predict_proba(X_b_as_p1)[0, 1]
-        
-        # Average the two directions for each model
-        # P(A wins) = (P(A|A as P1) + (1 - P(B|B as P1))) / 2
-        xgb_avg = (xgb_proba_a + (1 - xgb_proba_b)) / 2
-        lgb_avg = (lgb_proba_a + (1 - lgb_proba_b)) / 2
-        
-        # Ensemble (weighted average)
-        ensemble_proba = 0.55 * xgb_avg + 0.45 * lgb_avg
-        
-        # Confidence based on margin from 0.5
-        conf_margin = abs(ensemble_proba - 0.5)
-        if conf_margin > 0.15:
-            confidence = 'High'
-        elif conf_margin > 0.08:
-            confidence = 'Medium'
-        else:
-            confidence = 'Low'
-        
-        # Return prediction where proba is A's win probability
-        return {
-            'player_a': player_a_name,
-            'player_b': player_b_name,
-            'surface': surface,
-            'player_a_win_prob': float(ensemble_proba),
-            'player_b_win_prob': float(1 - ensemble_proba),
-            'confidence': confidence,
-            'xgb_prob': float(xgb_avg),
-            'lgb_prob': float(lgb_avg),
-            'ensemble_prob': float(ensemble_proba),
-            'error': None,
-            'model_accuracy': 0.778,
-            'grand_slam_accuracy': 0.821
-        }
+            # Build features (A vs B)
+            X, error = self.build_feature_vector(
+                player_a_name, player_b_name, surface,
+                tournament_level, round_num
+            )
+            
+            if X is None:
+                return {'error': error}
+            
+            # Get predictions from both models
+            xgb_proba = self.xgb_model.predict_proba(X)[0, 1]
+            lgb_proba = self.lgb_model.predict_proba(X)[0, 1]
+            
+            # Ensemble (weighted average)
+            ensemble_proba = 0.55 * xgb_proba + 0.45 * lgb_proba
+            
+            # Confidence based on margin from 0.5
+            conf_margin = abs(ensemble_proba - 0.5)
+            if conf_margin > 0.15:
+                confidence = 'High'
+            elif conf_margin > 0.08:
+                confidence = 'Medium'
+            else:
+                confidence = 'Low'
+            
+            # Return prediction where proba is A's win probability
+            return {
+                'player_a': player_a_name,
+                'player_b': player_b_name,
+                'surface': surface,
+                'player_a_win_prob': float(ensemble_proba),
+                'player_b_win_prob': float(1 - ensemble_proba),
+                'confidence': confidence,
+                'xgb_prob': float(xgb_proba),
+                'lgb_prob': float(lgb_proba),
+                'ensemble_prob': float(ensemble_proba),
+                'error': None,
+                'model_accuracy': 0.778,
+                'grand_slam_accuracy': 0.821
+            }
