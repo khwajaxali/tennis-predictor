@@ -4,76 +4,143 @@ from predictor import TennisPredictor
 st.set_page_config(page_title="Tennis Predictor", layout="wide")
 st.title("🎾 ATP Match Predictor")
 
-# Load predictor once
+
 @st.cache_resource
 def load_predictor():
     return TennisPredictor()
+
 
 pred = load_predictor()
 all_players = pred.get_all_players()
 
 st.header("Predict Match Outcome")
 
-# Search box for Player A
-st.subheader("Player A")
-search_a = st.text_input("Search Player A", key="search_a")
+# ── Player 1 (was Player A) ──────────────────────────────────────────────
+col_left, col_right = st.columns(2)
 
-if search_a:
-    matches_a = [p for p in all_players if search_a.lower() in p.lower()][:5]
-    player_a = st.selectbox("Select Player A", matches_a, key="select_a")
-else:
-    player_a = st.selectbox("Select Player A", all_players[:100], key="select_a")
+with col_left:
+    st.subheader("Player 1")
+    search_1 = st.text_input("Search Player 1", key="search_1",
+                             placeholder="e.g. Djokovic")
+    filtered_1 = ([p for p in all_players if search_1.lower() in p.lower()][:5]
+                  if search_1 else all_players[:100])
+    if not filtered_1:
+        st.warning("No players found — try a different spelling")
+        filtered_1 = all_players[:100]
+    player_1 = st.selectbox("Select Player 1", filtered_1, key="select_1")
 
-# Search box for Player B
-st.subheader("Player B")
-search_b = st.text_input("Search Player B", key="search_b")
+# ── Player 2 (was Player B) ──────────────────────────────────────────────
+with col_right:
+    st.subheader("Player 2")
+    search_2 = st.text_input("Search Player 2", key="search_2",
+                             placeholder="e.g. Nadal")
+    filtered_2 = ([p for p in all_players if search_2.lower() in p.lower()][:5]
+                  if search_2 else all_players[:100])
+    if not filtered_2:
+        st.warning("No players found — try a different spelling")
+        filtered_2 = all_players[:100]
+    player_2 = st.selectbox("Select Player 2", filtered_2, key="select_2")
 
-if search_b:
-    matches_b = [p for p in all_players if search_b.lower() in p.lower()][:5]
-    player_b = st.selectbox("Select Player B", matches_b, key="select_b")
-else:
-    player_b = st.selectbox("Select Player B", all_players[:100], key="select_b")
+# Swap button
+if st.button("🔄 Swap Players"):
+    # Use session state to swap
+    st.session_state.player_1 = player_2
+    st.session_state.player_2 = player_1
+    st.rerun()
 
-# Other params
+# ── Match context ─────────────────────────────────────────────────────────
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    surface = st.selectbox("Surface", ["Hard", "Clay", "Grass"])
+    surface = st.selectbox("Surface", ["Hard", "Clay", "Grass"], index=1)
 
 with col2:
-    tournament = st.selectbox("Tournament Level",
-                             {"ATP 250/500": "A", 
-                              "Masters 1000": "M",
-                              "Grand Slam": "G", 
-                              "ATP Finals": "F", 
-                              "Davis Cup": "D"},
-                             index=2)  # Default: Grand Slam
+    tourn_labels = ["ATP 250/500", "Masters 1000", "Grand Slam",
+                    "ATP Finals", "Davis Cup"]
+    tourn_values = ["A", "M", "G", "F", "D"]
+    tourn_idx = st.selectbox("Tournament Level", range(len(tourn_labels)),
+                             format_func=lambda i: tourn_labels[i],
+                             index=2)
+    tournament = tourn_values[tourn_idx]
 
 with col3:
-    round_num = st.selectbox("Round",
-                            {"R128": "R128", "R64": "R64", "R32": "R32",
-                             "R16": "R16", "QF": "QF", "SF": "SF",
-                             "Final": "F"},
-                            index=6)  # Default: Final
+    round_labels = ["R128", "R64", "R32", "R16", "QF", "SF", "Final"]
+    round_values = ["R128", "R64", "R32", "R16", "QF", "SF", "F"]
+    round_idx = st.selectbox("Round", range(len(round_labels)),
+                             format_func=lambda i: round_labels[i],
+                             index=6)
+    round_num = round_values[round_idx]
 
-# Predict button
-if st.button("🔮 Predict", use_container_width=True):
-    with st.spinner("Computing..."):
-        result = pred.predict_match(player_a, player_b, surface, tournament, round_num)
-    
-    if result.get('error'):
-        st.error(f"Error: {result['error']}")
+# ── Predict ───────────────────────────────────────────────────────────────
+st.divider()
+
+if st.button("🔮 Predict Match", use_container_width=True, type="primary"):
+
+    if player_1 == player_2:
+        st.error("Please select two different players.")
     else:
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.metric(f"{player_a} Win %",
-                     f"{result['player_a_win_prob']:.1%}")
-        
-        with col_b:
-            st.metric(f"{player_b} Win %",
-                     f"{result['player_b_win_prob']:.1%}")
-        
-        st.info(f"**Confidence:** {result['confidence']}")
-        
-        st.write(f"**Model breakdown:** XGBoost {result['xgb_prob']:.1%} | LightGBM {result['lgb_prob']:.1%}")
+        with st.spinner("Computing prediction..."):
+            result = pred.predict_match(
+                player_1, player_2, surface, tournament, round_num
+            )
+
+        if result.get('error'):
+            st.error(f"Error: {result['error']}")
+        else:
+            # ── Result cards ─────────────────────────────────────────────
+            st.subheader("Prediction Result")
+
+            c1, c2, c3 = st.columns([2, 1, 2])
+
+            with c1:
+                st.metric(
+                    label=f"🎾 {player_1}",
+                    value=f"{result['p1_win_prob']:.1%}",
+                    delta=f"{result['p1_win_prob'] - 0.5:+.1%} vs 50%"
+                )
+
+            with c2:
+                st.markdown(
+                    f"<h2 style='text-align:center; padding-top:10px'>VS</h2>",
+                    unsafe_allow_html=True
+                )
+
+            with c3:
+                st.metric(
+                    label=f"🎾 {player_2}",
+                    value=f"{result['p2_win_prob']:.1%}",
+                    delta=f"{result['p2_win_prob'] - 0.5:+.1%} vs 50%"
+                )
+
+            # Winner call
+            winner = player_1 if result['p1_win_prob'] > 0.5 else player_2
+            win_prob = max(result['p1_win_prob'], result['p2_win_prob'])
+            st.success(f"**Predicted winner: {winner}** ({win_prob:.1%})")
+
+            # Confidence + model breakdown
+            conf_color = {"High": "🟢", "Medium": "🟡", "Low": "🔴"}
+            st.info(
+                f"{conf_color.get(result['confidence'], '⚪')} "
+                f"Confidence: **{result['confidence']}**  |  "
+                f"XGBoost: {result['xgb_prob']:.1%}  |  "
+                f"LightGBM: {result['lgb_prob']:.1%}  |  "
+                f"Ensemble: {result['p1_win_prob']:.1%} for {player_1}"
+            )
+
+            # Context reminder
+            st.caption(
+                f"Context: {tourn_labels[tourn_idx]} · {surface} · "
+                f"{round_labels[round_idx]}"
+            )
+
+            # Quick H2H summary (still works with old method)
+            st.divider()
+            h2h = pred.get_h2h(player_1, player_2)
+            if h2h['total_matches'] > 0:
+                st.markdown(f"**H2H record:** {h2h['h2h_record']} "
+                            f"({h2h['total_matches']} matches)")
+                for surf, rec in h2h['surface_breakdown'].items():
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;• {surf}: {rec}",
+                                unsafe_allow_html=True)
+            else:
+                st.markdown("**H2H:** No prior meetings in database")

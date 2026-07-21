@@ -1,8 +1,1 @@
-{
-  "1st_serve_pct": 0.6172458991583415,
-  "1st_won_pct": 0.767251437343762,
-  "2nd_won_pct": 0.5659945899613318,
-  "ace_rate": 0.09136040552215972,
-  "df_rate": 0.03305265728070981,
-  "bp_save_pct": 0.663362444194087
-}
+{"Hard": {"1st_serve_pct": 0.617, "1st_won_pct": 0.767, "2nd_won_pct": 0.566, "ace_rate": 0.091, "return_pts_won": 0.423, "bp_save_pct": 0.663, "bp_convert_pct": 0.489}, "Clay": {"1st_serve_pct": 0.601, "1st_won_pct": 0.74, "2nd_won_pct": 0.545, "ace_rate": 0.045, "return_pts_won": 0.445, "bp_save_pct": 0.65, "bp_convert_pct": 0.51}, "Grass": {"1st_serve_pct": 0.63, "1st_won_pct": 0.79, "2nd_won_pct": 0.58, "ace_rate": 0.12, "return_pts_won": 0.4, "bp_save_pct": 0.675, "bp_convert_pct": 0.47}}
